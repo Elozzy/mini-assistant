@@ -5,6 +5,7 @@ from pydantic import ValidationError
 from app.core.ollama import generate
 from app.agent.prompt import SYSTEM_PROMPT
 from app.agent.schemas import AgentResponse
+from app.agent.memory import add_to_short_term, get_short_term_context
 import json
 import re
 
@@ -39,7 +40,7 @@ def ensure_device_fallback(actions: list):
 @router.post("/chat")
 def chat(payload: dict):
     """
-    Chat endpoint for JarvisOS.
+    Chat endpoint for Tarnished.
     Expects:
     {
         "message": "User message here"
@@ -58,7 +59,11 @@ def chat(payload: dict):
     """
     user_message = payload.get("message", "")
 
+    # Add user message to short-term memory
+    add_to_short_term("user", user_message)
+
     # Build prompt for Ollama
+    short_term_context = get_short_term_context()
     prompt = f"""
 {SYSTEM_PROMPT}
 
@@ -73,6 +78,8 @@ User message:
         data = parse_json_safe(raw_output)
         # Ensure device field is always present
         data["actions"] = ensure_device_fallback(data.get("actions", []))
+        # Add assistant message to short-term memory
+        add_to_short_term("assistant", data["message"])
         # Validate with Pydantic schema
         agent_response = AgentResponse(**data)
     except (json.JSONDecodeError, ValidationError) as e:
@@ -83,5 +90,8 @@ User message:
             "details": str(e)
         }
 
-    # Return validated response
-    return agent_response.dict()
+    # Return validated response with short-term context
+    return {
+        "response": agent_response.dict(),
+        "context": get_short_term_context()
+    }
