@@ -1,6 +1,5 @@
 import requests
-
-OLLAMA_URL = ""
+from app.core.config import OLLAMA_URL
 
 def generate(prompt: str) -> str:
     response = requests.post(
