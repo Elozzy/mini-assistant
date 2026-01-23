@@ -1,0 +1,56 @@
+# -----------------------
+# Binaries for programs and plugins
+# -----------------------
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# -----------------------
+# Go build artifacts
+# -----------------------
+/bin/
+/out/
+/build/
+
+# Compiled object files
+*.o
+*.a
+
+# Go test files
+*.test
+
+# Go modules
+/go.sum
+
+# -----------------------
+# IDEs / editors
+# -----------------------
+.vscode/
+.idea/
+*.iml
+
+# -----------------------
+# OS generated files
+# -----------------------
+.DS_Store
+Thumbs.db
+
+# -----------------------
+# Logs
+# -----------------------
+*.log
+
+# -----------------------
+# Coverage / profiling
+# -----------------------
+coverage.out
+*.prof
+
+# -----------------------
+# Temporary files
+# -----------------------
+*.tmp
+*.swp
+*.swo
