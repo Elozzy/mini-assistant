@@ -1,5 +1,3 @@
-# backend/app/api/chat.py
-
 from fastapi import APIRouter
 from pydantic import ValidationError
 from app.core.ollama import generate
@@ -8,6 +6,7 @@ from app.agent.schemas import AgentResponse
 from app.agent.memory import add_to_short_term, get_short_term_context
 import json
 import re
+from app.agent.long_term_memory import add_memory, query_memory, persist
 
 router = APIRouter()
 # Default device name for MacOS
@@ -37,60 +36,59 @@ def ensure_device_fallback(actions: list):
             action["device"] = DEFAULT_DEVICE
     return actions
 
+
 @router.post("/chat")
 def chat(payload: dict):
-    """
-    Chat endpoint for Tarnished.
-    Expects:
-    {
-        "message": "User message here"
-    }
-    Returns structured AgentResponse:
-    {
-        "message": "Friendly summary",
-        "actions": [
-            {
-                "tool": "tool_name",
-                "device": "device_name",
-                "args": {...}
-            }
-        ]
-    }
-    """
     user_message = payload.get("message", "")
 
     # Add user message to short-term memory
     add_to_short_term("user", user_message)
 
-    # Build prompt for Ollama
+    # Query long-term memory for relevant context
+    retrieved_memories = query_memory(user_message, n_results=3)
+    memory_context = ""
+    for mem in retrieved_memories:
+        memory_context += f"PAST MEMORY: {mem['document']}\n"
+
+    # Include short-term + long-term memory in prompt
     short_term_context = get_short_term_context()
     prompt = f"""
 {SYSTEM_PROMPT}
+
+Conversation history:
+{short_term_context}
+
+Relevant past memories:
+{memory_context}
 
 User message:
 {user_message}
 """
 
-    # Call Ollama to generate response
     raw_output = generate(prompt)
-    try:
 
+    try:
         data = parse_json_safe(raw_output)
-        # Ensure device field is always present
         data["actions"] = ensure_device_fallback(data.get("actions", []))
-        # Add assistant message to short-term memory
-        add_to_short_term("assistant", data["message"])
-        # Validate with Pydantic schema
         agent_response = AgentResponse(**data)
+
+        # Add AI response to short-term memory
+        add_to_short_term("assistant", agent_response.message)
+
+        # Optionally add important memories to long-term memory
+        add_memory(user_message, metadata={"role": "user"})
+        add_memory(agent_response.message, metadata={"role": "assistant"})
+
     except (json.JSONDecodeError, ValidationError) as e:
-        # Return helpful debug info if parsing fails
         return {
             "error": "Invalid LLM output",
             "raw_output": raw_output,
             "details": str(e)
         }
 
-    # Return validated response with short-term context
+    # Persist vector store
+    persist()
+
     return {
         "response": agent_response.dict(),
         "context": get_short_term_context()
