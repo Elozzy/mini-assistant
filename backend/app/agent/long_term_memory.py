@@ -19,29 +19,41 @@ def get_embedding(text: str) -> List[float]:
     return ollama_get_embedding(text)
 
 def add_memory(text: str, metadata: Dict = {}):
-    vector = get_embedding(text)
-    collection.add(
-        documents=[text],
-        metadatas=[metadata],
-        ids=[str(uuid.uuid4())],
-        embeddings=[vector]
-    )
+    """Add a memory to long-term storage. Silently fails if Ollama is unavailable."""
+    try:
+        vector = get_embedding(text)
+        collection.add(
+            documents=[text],
+            metadatas=[metadata],
+            ids=[str(uuid.uuid4())],
+            embeddings=[vector]
+        )
+    except (ConnectionError, ValueError) as e:
+        # Log but don't crash if Ollama is unavailable
+        print(f"Warning: Could not add memory (Ollama unavailable): {e}")
+        pass
 
 def query_memory(query: str, n_results: int = 3) -> List[Dict]:
-    vector = get_embedding(query)
-    results = collection.query(
-        query_embeddings=[vector],
-        n_results=n_results,
-        include=["documents", "metadatas", "distances"]
-    )
-    return [
-        {"document": doc, "metadata": meta, "distance": dist}
-        for doc, meta, dist in zip(
-            results["documents"][0], 
-            results["metadatas"][0], 
-            results["distances"][0]
+    """Query long-term memory. Returns empty list if Ollama is unavailable."""
+    try:
+        vector = get_embedding(query)
+        results = collection.query(
+            query_embeddings=[vector],
+            n_results=n_results,
+            include=["documents", "metadatas", "distances"]
         )
-    ]
+        return [
+            {"document": doc, "metadata": meta, "distance": dist}
+            for doc, meta, dist in zip(
+                results["documents"][0], 
+                results["metadatas"][0], 
+                results["distances"][0]
+            )
+        ]
+    except (ConnectionError, ValueError) as e:
+        # Return empty list if Ollama is unavailable
+        print(f"Warning: Could not query memory (Ollama unavailable): {e}")
+        return []
 
 # Persist the database to disk
 def persist():

@@ -105,7 +105,14 @@ User message:
 {user_message}
 """
 
-    raw_output = generate(prompt)
+    try:
+        raw_output = generate(prompt)
+    except ConnectionError as e:
+        return {
+            "error": "Ollama connection failed",
+            "message": str(e),
+            "details": "Make sure Ollama is running: ollama serve"
+        }
 
     try:
         data = parse_json_safe(raw_output)

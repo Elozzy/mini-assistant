@@ -3,18 +3,29 @@ from typing import List
 from app.core.config import OLLAMA_URL, OLLAMA_EMBEDDING_MODEL
 
 def generate(prompt: str) -> str:
-    response = requests.post(
-        OLLAMA_URL,
-        json={
-            "model": "llama3.1",
-            "prompt": prompt,
-            "stream": False
-        },
-        timeout=60
-    )
-
-    response.raise_for_status()
-    return response.json()["response"]
+    """Generate text using Ollama. Raises ConnectionError if Ollama is unavailable."""
+    if not OLLAMA_URL:
+        raise ConnectionError(
+            "OLLAMA_URL is not set. Please set it in your .env file or environment variables."
+        )
+    
+    try:
+        response = requests.post(
+            OLLAMA_URL,
+            json={
+                "model": "llama3.1",
+                "prompt": prompt,
+                "stream": False
+            },
+            timeout=60
+        )
+        response.raise_for_status()
+        return response.json()["response"]
+    except requests.exceptions.ConnectionError as e:
+        raise ConnectionError(
+            f"Cannot connect to Ollama at {OLLAMA_URL}. "
+            f"Make sure Ollama is running: ollama serve"
+        ) from e
 
 def get_embedding(text: str) -> List[float]:
     """Get embedding vector from Ollama embeddings API."""
@@ -51,6 +62,11 @@ def get_embedding(text: str) -> List[float]:
             raise ValueError(f"Invalid response from Ollama: missing embeddings. Response: {result}")
         
         return result["embeddings"][0]
+    except requests.exceptions.ConnectionError as e:
+        raise ConnectionError(
+            f"Cannot connect to Ollama at {embeddings_url}. "
+            f"Make sure Ollama is running: ollama serve"
+        ) from e
     except requests.exceptions.HTTPError as e:
         if e.response.status_code == 404:
             raise ValueError(
