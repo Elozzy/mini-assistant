@@ -13,7 +13,7 @@ except ValueError:
     # Collection doesn't exist, create it
     collection = chroma_client.create_collection(name=collection_name)
 
-# Simple embedding function using Ollama text embeddings
+# embedding function using Ollama text embeddings
 def get_embedding(text: str) -> List[float]:
     from app.core.ollama import get_embedding as ollama_get_embedding
     return ollama_get_embedding(text)

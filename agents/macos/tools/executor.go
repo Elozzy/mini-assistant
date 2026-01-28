@@ -20,7 +20,7 @@ func Execute(tool string, args map[string]string) (string, error) {
 		return fmt.Sprintf("%s opened successfully", appName), nil
 
 	case "filesystem.search":
-		// Example: only search Desktop for now
+		//  only search Desktop for now
 		extension := args["extension"]
 		if extension == "" {
 			extension = "*"
