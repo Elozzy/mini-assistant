@@ -234,4 +234,4 @@ The chat model is fixed in code as `llama3.1`; the agent URL is `http://localhos
 
 ## License
 
-See the repository’s license file (if present).
+See the repository’s license file.
